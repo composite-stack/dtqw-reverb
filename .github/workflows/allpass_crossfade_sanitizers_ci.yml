@@ -1,0 +1,87 @@
+name: Allpass & Crossfade Worst-Case Sanitizer CI
+
+on:
+  push:
+    branches: [ main, master, "feature/**", "fix/**" ]
+    paths:
+      - "DTQWReverb.hpp"
+      - "DTQWWorstCaseStressTests.cpp"
+      - "DTQWStateCrossfadeTests.cpp"
+      - "DTQWDispersionTests.cpp"
+      - "NEON_2_SSE.h"
+      - "CMakeLists.txt"
+      - "scripts/**"
+      - ".github/workflows/allpass_crossfade_sanitizers_ci.yml"
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - "DTQWReverb.hpp"
+      - "DTQWWorstCaseStressTests.cpp"
+      - "DTQWStateCrossfadeTests.cpp"
+      - "DTQWDispersionTests.cpp"
+      - "NEON_2_SSE.h"
+      - "CMakeLists.txt"
+      - "scripts/**"
+      - ".github/workflows/allpass_crossfade_sanitizers_ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ASAN_OPTIONS: "detect_leaks=1:check_initialization_order=1:strict_init_order=1:detect_stack_use_after_return=1"
+  UBSAN_OPTIONS: "print_stacktrace=1:halt_on_error=1"
+
+jobs:
+  linux-sanitizers:
+    name: Linux (${{ matrix.compiler }}) - ASan + UBSan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies & compiler
+        run: |
+          sudo apt-get update -qq
+          if [ "${{ matrix.compiler }}" = "clang++" ]; then
+            sudo apt-get install -y -qq clang
+          else
+            sudo apt-get install -y -qq g++
+          fi
+
+      - name: Run CI Sanitizer Suite (Worst-Case & Crossfade)
+        run: |
+          chmod +x scripts/ci_verify_allpass_crossfade.sh
+          CXX=${{ matrix.compiler }} ./scripts/ci_verify_allpass_crossfade.sh --force
+
+  macos-neon-sanitizers:
+    name: macOS ARM64 (AppleClang NEON) - ASan + UBSan
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run CI Sanitizer Suite on Apple Silicon NEON
+        run: |
+          chmod +x scripts/ci_verify_allpass_crossfade.sh
+          CXX=clang++ ./scripts/ci_verify_allpass_crossfade.sh --force
+
+  allpass-crossfade-gate:
+    name: allpass-crossfade-gate
+    needs: [linux-sanitizers, macos-neon-sanitizers]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Matrix Results
+        run: |
+          if [ "${{ needs.linux-sanitizers.result }}" != "success" ] || [ "${{ needs.macos-neon-sanitizers.result }}" != "success" ]; then
+            echo "❌ FEHLER: Mindestens ein Sanitizer-Test auf Linux oder macOS ist fehlgeschlagen!"
+            exit 1
+          fi
+          echo "✅ ERFOLG: Alle Worst-Case- und Crossfade-Stresstests unter ASan/UBSan auf allen Plattformen bestanden."
