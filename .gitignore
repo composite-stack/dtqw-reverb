@@ -1,0 +1,11 @@
+build/
+bin/
+*.o
+*.a
+*.so
+*.dylib
+*.bak
+*.tmp
+.DS_Store
+.vscode/
+.idea/
