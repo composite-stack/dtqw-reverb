@@ -353,6 +353,16 @@ struct ScalarBackend {
   using DefaultBackend = ScalarBackend;
 #endif
 
+#if !defined(__SSE__) && !defined(_M_X64)
+  using SSEBackend = DefaultBackend;
+#endif
+
+#if !defined(__ARM_NEON) && !defined(__aarch64__)
+  #if !defined(DTQW_TEST_NEON_ON_X86)
+    using NEONBackend = DefaultBackend;
+  #endif
+#endif
+
 } // namespace dtqw::simd
 
 namespace dtqw {
