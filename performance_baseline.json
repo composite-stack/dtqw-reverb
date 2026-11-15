@@ -1,0 +1,59 @@
+{
+  "scenarios": {
+    "steady_state_48k_b128": {
+      "backend": "SIMD (Default)",
+      "sample_rate": 48000,
+      "block_size": 128,
+      "median_ms_per_sec": 33.3466,
+      "min_ms_per_sec": 31.7204,
+      "max_ms_per_sec": 39.0721,
+      "stddev_ms_per_sec": 2.49697,
+      "cpu_usage_pct": 3.33466,
+      "realtime_factor": 29.9881
+    },
+    "low_latency_48k_b64": {
+      "backend": "SIMD (Default)",
+      "sample_rate": 48000,
+      "block_size": 64,
+      "median_ms_per_sec": 34.932,
+      "min_ms_per_sec": 33.1294,
+      "max_ms_per_sec": 42.7338,
+      "stddev_ms_per_sec": 3.13704,
+      "cpu_usage_pct": 3.4932,
+      "realtime_factor": 28.6271
+    },
+    "dynamic_stress_48k_b128": {
+      "backend": "SIMD (Default)",
+      "sample_rate": 48000,
+      "block_size": 128,
+      "median_ms_per_sec": 39.0718,
+      "min_ms_per_sec": 34.2275,
+      "max_ms_per_sec": 61.3784,
+      "stddev_ms_per_sec": 8.69964,
+      "cpu_usage_pct": 3.90718,
+      "realtime_factor": 25.5939
+    },
+    "hi_res_96k_b128": {
+      "backend": "SIMD (Default)",
+      "sample_rate": 96000,
+      "block_size": 128,
+      "median_ms_per_sec": 71.1095,
+      "min_ms_per_sec": 63.5218,
+      "max_ms_per_sec": 83.6753,
+      "stddev_ms_per_sec": 6.98259,
+      "cpu_usage_pct": 7.11095,
+      "realtime_factor": 14.0628
+    },
+    "scalar_ref_48k_b128": {
+      "backend": "Scalar",
+      "sample_rate": 48000,
+      "block_size": 128,
+      "median_ms_per_sec": 80.2924,
+      "min_ms_per_sec": 72.874,
+      "max_ms_per_sec": 88.9987,
+      "stddev_ms_per_sec": 5.69342,
+      "cpu_usage_pct": 8.02924,
+      "realtime_factor": 12.4545
+    }
+  }
+}
