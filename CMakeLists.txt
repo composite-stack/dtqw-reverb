@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(DTQW_ENABLE_SANITIZERS "Enable Address and UndefinedBehavior sanitizers" ON)
+option(DTQW_ENABLE_SANITIZERS "Enable Address and UndefinedBehavior sanitizers for test targets" ON)
 option(DTQW_ENABLE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 
 # Compiler-Flags
@@ -50,3 +50,21 @@ add_custom_target(allpass_crossfade_ci
     COMMAND ${CMAKE_CTEST_COMMAND} -L "mandatory" --output-on-failure
     DEPENDS dtqw_worst_case_stress_tests dtqw_state_crossfade_tests dtqw_dispersion_tests
 )
+
+# 4. Performance Benchmark Executable (Production -O3, ohne Sanitizer)
+add_executable(dtqw_benchmark DTQWPerformanceBenchmark.cpp)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(dtqw_benchmark PRIVATE -O3 -DNDEBUG -fno-sanitize=all)
+    target_link_options(dtqw_benchmark PRIVATE -fno-sanitize=all)
+endif()
+
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_FOUND)
+    add_custom_target(check_performance
+        COMMAND dtqw_benchmark --json ${CMAKE_CURRENT_BINARY_DIR}/benchmark_current.json
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_performance_regression.py --current ${CMAKE_CURRENT_BINARY_DIR}/benchmark_current.json --baseline ${CMAKE_CURRENT_SOURCE_DIR}/performance_baseline.json --tolerance 25.0
+        DEPENDS dtqw_benchmark
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Running reproducible DSP performance benchmark and regression check..."
+    )
+endif()
