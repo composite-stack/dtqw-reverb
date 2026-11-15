@@ -18,6 +18,7 @@ static size_t g_heap_allocations = 0;
 static bool g_track_allocations = false;
 
 #ifndef __SANITIZE_ADDRESS__
+#if !(defined(__APPLE__) && (defined(__SANITIZE_ADDRESS__) || (defined(__has_feature) && __has_feature(address_sanitizer))))
 void* operator new(size_t size) {
     if (g_track_allocations) {
         ++g_heap_allocations;
@@ -43,6 +44,7 @@ void* operator new[](size_t size) {
 void operator delete[](void* ptr) noexcept {
     std::free(ptr);
 }
+#endif
 
 void operator delete[](void* ptr, size_t) noexcept {
     std::free(ptr);
