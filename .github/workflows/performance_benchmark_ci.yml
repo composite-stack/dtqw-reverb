@@ -1,0 +1,78 @@
+name: DSP Performance Benchmark & Regression CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'DTQWReverb.hpp'
+      - 'DTQWPerformanceBenchmark.cpp'
+      - 'performance_baseline.json'
+      - 'scripts/check_performance_regression.py'
+      - 'CMakeLists.txt'
+      - '.github/workflows/performance_benchmark_ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'DTQWReverb.hpp'
+      - 'DTQWPerformanceBenchmark.cpp'
+      - 'performance_baseline.json'
+      - 'scripts/check_performance_regression.py'
+      - 'CMakeLists.txt'
+      - '.github/workflows/performance_benchmark_ci.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark-linux-x86_64:
+    name: Benchmark Linux (x86_64 SSE4.1)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile Performance Benchmark (Release -O3)
+        run: |
+          mkdir -p build_bench
+          cd build_bench
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          cmake --build . --target dtqw_benchmark -j$(nproc)
+
+      - name: Run Reproducible DSP Benchmark
+        run: |
+          ./build_bench/dtqw_benchmark \
+            --runs 11 \
+            --warmup 3 \
+            --duration 1.5 \
+            --json build_bench/current_benchmark.json
+
+      - name: Check for Performance Regressions
+        run: |
+          python3 scripts/check_performance_regression.py \
+            --current build_bench/current_benchmark.json \
+            --baseline performance_baseline.json \
+            --tolerance 25.0 \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Benchmark Results Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-linux
+          path: build_bench/current_benchmark.json
+
+  performance-regression-gate:
+    name: performance-regression-gate
+    needs: [benchmark-linux-x86_64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All Performance Benchmarks Passed
+        run: |
+          echo "✅ All DSP performance regression checks passed within tolerance."
