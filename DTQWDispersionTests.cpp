@@ -1,4 +1,6 @@
+#if (defined(__x86_64__) || defined(_M_X64)) && !defined(__aarch64__) && !defined(__ARM_NEON)
 #define DTQW_TEST_NEON_ON_X86 1
+#endif
 
 #include <iostream>
 #include <vector>
