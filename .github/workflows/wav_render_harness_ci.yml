@@ -43,11 +43,21 @@ jobs:
         run: |
           ./build/dtqw_render_wav --ir build/smoke_ir.wav --duration 0.25 --float --decay 1.0 --no-chorus -g -0.6 --coin-phase-deg 90 --quiet
           python3 - <<'PY'
-          import wave
-          with wave.open('build/smoke_ir.wav', 'rb') as f:
-              assert f.getnchannels() == 2
-              assert f.getsampwidth() == 4
-              assert f.getframerate() == 48000
-              assert f.getnframes() == 12000
-          print('IR WAV metadata verified')
+          import struct
+          data = open('build/smoke_ir.wav', 'rb').read()
+          assert data[:4] == b'RIFF' and data[8:12] == b'WAVE'
+          pos = 12
+          chunks = {}
+          while pos + 8 <= len(data):
+              name = data[pos:pos+4]
+              size = struct.unpack_from('<I', data, pos+4)[0]
+              chunks[name] = data[pos+8:pos+8+size]
+              pos += 8 + size + (size & 1)
+          fmt = chunks[b'fmt ']
+          format_tag, channels, rate, byte_rate, align, bits = struct.unpack_from('<HHIIHH', fmt)
+          frames = len(chunks[b'data']) // align
+          assert format_tag == 3, format_tag  # IEEE float
+          assert channels == 2 and bits == 32
+          assert rate == 48000 and frames == 12000
+          print('Float WAV metadata verified')
           PY
