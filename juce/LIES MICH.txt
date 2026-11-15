@@ -1,0 +1,12 @@
+AXIOM DTQW v1 — fertige Plug-ins (Universal: Apple Silicon + Intel, macOS 10.13+)
+
+Inhalt dieses Ordners:
+  • AXIOM DTQW.vst3         VST3 (Cubase, Ableton Live, Reaper, Studio One, Bitwig …)
+  • AXIOM DTQW.component    Audio Unit (Logic Pro, GarageBand)
+  • AXIOM DTQW.app          Standalone-Programm (direkt per Doppelklick ausführbar)
+  • install-mac.command     Optional: Kopiert VST3 & AU in deinen Benutzerordner
+
+Installation (ohne Root/Passwort):
+  1. Doppelklick auf install-mac.command
+  2. DAW starten oder Plug-in-Scan ausführen
+  3. Fertig!
