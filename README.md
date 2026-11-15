@@ -1,38 +1,42 @@
-# DTQW Reverb - Discrete-Time Quantum Walk Audio Reverb Engine
+# DTQW Reverb DSP Core
 
-Ein modularer, hocheffizienter C++17 Reverb-DSP-Kern basierend auf Discrete-Time Quantum Walks (DTQW) auf einem 4D-Hypercube-Graphen (16 Knoten, 64 gerichtete Verzögerungskanten) mit unitärem Grover-Coin, stufenloser Phasenrotation, Allpass-Dispersion, reziprokem Chorusing und dualem Allpass-Zustandscrossfading.
+Framework-independent C++17 implementation of a 4D-hypercube discrete-time quantum-walk reverb engine.
 
-## Features
+## Offline WAV render harness
 
-- **4D-Hypercube-Topologie:** 16 Knoten, 64 gerichtete Delay-Linien mit SIMD-Transpositionsleser und Guard-Zone.
-- **Unitärer Grover-Streu-Coin mit Phasenrotation:** Stufenlose $C(\theta)$-Phasenrotation ohne $t=0$-Wet-Durchschlag.
-- **Hadamard-Matrixing:** Orthogonale 16-Knoten-Injektion und -Auskopplung zur Modenentkopplung und Raumabbildung.
-- **Frequenzabhängige Allpass-Dispersion:** Kaskadierte Allpass-Filterstufen in den Kanten mit kubischem Smoothstep-State-Crossfading.
-- **SIMD-Vektorisierung:** Paritätsgeprüfte Backends für SSE4.1 (x86_64), Apple Silicon ARM NEON und skalare Referenz.
-- **Allokationsfreier Audiopfad:** 0 Heap-Allokationen im Audio-Thread nach `prepare()`.
+`dtqw_render_wav` lets you audition the DSP without a DAW/plugin wrapper. It accepts RIFF/WAVE PCM 16/24/32-bit integer and IEEE float 32-bit input, converts mono to dual-mono, and writes stereo PCM 16/24-bit or float32 WAV. The input sample rate is preserved; no resampling is performed.
 
-## Build & Tests
+Build with CMake:
 
-### Lokale Verifikation (ASan & UBSan)
 ```bash
-./run_sanitizers.sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DDTQW_ENABLE_SANITIZERS=OFF
+cmake --build build --target dtqw_render_wav dtqw_wav_harness_tests
+ctest --test-dir build -R WavHarnessTests --output-on-failure
 ```
 
-### Performance Benchmark & Regression Check
+### Render an input file
+
 ```bash
-./scripts/run_performance_benchmark.sh --tolerance 25.0
+./build/dtqw_render_wav input.wav output.wav \
+  --room-size 1.2 --decay 2.5 --damping 5500 --mix 0.25 \
+  --coin-phase-deg 45 --dispersion 0.5 --chorus-rate 0.8 --chorus-depth 3
 ```
 
-### Manuelle Test-Kompilierung
+### Generate a stereo impulse response
+
 ```bash
-g++ -std=c++17 -O3 -msse4.1 -I. DTQWPerformanceBenchmark.cpp -o dtqw_benchmark
-./dtqw_benchmark --runs 11 --warmup 3 --duration 1.5 --json benchmark_results.json
+./build/dtqw_render_wav --ir hall_ir.wav --duration 4 --sample-rate 48000 \
+  --float --decay 2.8 --dispersion 0.4
 ```
 
-## CI / CD & Quality Gates
+Run `./build/dtqw_render_wav --help` for the full options list. `--normalize` buffers the rendered output in memory to find its peak; omit it for streaming WAV output with fixed gain. Defaults are 100% wet for an IR and 35% wet for file processing, with a tail of up to 8 seconds added after the input.
 
-1. **`allpass-crossfade-gate` (Pflicht-Check auf `main`):**
-   - Führt Worst-Case-Stresstests (Blockgrößen 1..64, Koeffizienten-Stress, überlappendes Retriggering) unter Clang/GCC AddressSanitizer und UndefinedBehaviorSanitizer auf Linux und macOS aus.
-2. **`performance-regression-gate`:**
-   - Misst die DSP-Verarbeitungsgeschwindigkeit über standardisierte Szenarien (48 kHz / 96 kHz, Block 64 / 128, Steady-State und dynamischer Crossfade-Stress).
-   - Vergleicht die Ergebnisse gegen `performance_baseline.json` und schlägt bei einer Überschreitung des Toleranzlimits (z. B. >25% Verlangsamung) fehl.
+## DSP validation
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+The project includes SIMD parity, automation, dispersion/crossfade, stress and performance regression tests. `dtqw_render_wav` is an offline listening/testing utility and does not replace a real-time plugin wrapper.
