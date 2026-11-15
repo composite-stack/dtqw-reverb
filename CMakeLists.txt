@@ -51,7 +51,23 @@ add_custom_target(allpass_crossfade_ci
     DEPENDS dtqw_worst_case_stress_tests dtqw_state_crossfade_tests dtqw_dispersion_tests
 )
 
-# 4. Performance Benchmark Executable (Production -O3, ohne Sanitizer)
+# 4. Offline WAV render harness
+add_executable(dtqw_render_wav dtqw_render_wav.cpp)
+target_include_directories(dtqw_render_wav PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(dtqw_render_wav PRIVATE -O3 -DNDEBUG -fno-sanitize=all)
+    target_link_options(dtqw_render_wav PRIVATE -fno-sanitize=all)
+endif()
+
+# WAV file I/O tests (kept independent of sanitizer hooks in DSP stress tests)
+add_executable(dtqw_wav_harness_tests DTQWWavHarnessTests.cpp)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(dtqw_wav_harness_tests PRIVATE -UNDEBUG)
+endif()
+add_test(NAME WavHarnessTests COMMAND dtqw_wav_harness_tests)
+set_tests_properties(WavHarnessTests PROPERTIES LABELS "ci;wav;harness")
+
+# 5. Performance Benchmark Executable (Production -O3, ohne Sanitizer)
 add_executable(dtqw_benchmark DTQWPerformanceBenchmark.cpp)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(dtqw_benchmark PRIVATE -O3 -DNDEBUG -fno-sanitize=all)

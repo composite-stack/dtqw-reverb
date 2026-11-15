@@ -1,0 +1,63 @@
+name: WAV Render Harness CI
+
+on:
+  push:
+    branches: [ main, master, "feature/**", "fix/**" ]
+    paths:
+      - "DTQWReverb.hpp"
+      - "NEON_2_SSE.h"
+      - "WavFile.hpp"
+      - "dtqw_render_wav.cpp"
+      - "DTQWWavHarnessTests.cpp"
+      - "CMakeLists.txt"
+      - "README.md"
+      - "scripts/build_render_wav.sh"
+      - ".github/workflows/wav_render_harness_ci.yml"
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - "DTQWReverb.hpp"
+      - "NEON_2_SSE.h"
+      - "WavFile.hpp"
+      - "dtqw_render_wav.cpp"
+      - "DTQWWavHarnessTests.cpp"
+      - "CMakeLists.txt"
+      - "README.md"
+      - "scripts/build_render_wav.sh"
+      - ".github/workflows/wav_render_harness_ci.yml"
+  workflow_dispatch:
+
+jobs:
+  wav-harness:
+    name: Build, format tests, and CLI smoke tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure Release build
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DDTQW_ENABLE_SANITIZERS=OFF
+      - name: Build renderer and WAV tests
+        run: cmake --build build --target dtqw_render_wav dtqw_wav_harness_tests --parallel 2
+      - name: Run WAV format tests
+        run: ctest --test-dir build -R WavHarnessTests --output-on-failure
+      - name: Smoke-test offline IR rendering
+        run: |
+          ./build/dtqw_render_wav --ir build/smoke_ir.wav --duration 0.25 --float --decay 1.0 --no-chorus -g -0.6 --coin-phase-deg 90 --quiet
+          python3 - <<'PY'
+          import struct
+          data = open('build/smoke_ir.wav', 'rb').read()
+          assert data[:4] == b'RIFF' and data[8:12] == b'WAVE'
+          pos = 12
+          chunks = {}
+          while pos + 8 <= len(data):
+              name = data[pos:pos+4]
+              size = struct.unpack_from('<I', data, pos+4)[0]
+              chunks[name] = data[pos+8:pos+8+size]
+              pos += 8 + size + (size & 1)
+          fmt = chunks[b'fmt ']
+          format_tag, channels, rate, byte_rate, align, bits = struct.unpack_from('<HHIIHH', fmt)
+          frames = len(chunks[b'data']) // align
+          assert format_tag == 3, format_tag  # IEEE float
+          assert channels == 2 and bits == 32
+          assert rate == 48000 and frames == 12000
+          print('Float WAV metadata verified')
+          PY
