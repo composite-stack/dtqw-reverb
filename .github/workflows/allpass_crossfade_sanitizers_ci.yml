@@ -10,6 +10,9 @@ on:
       - "DTQWDispersionTests.cpp"
       - "NEON_2_SSE.h"
       - "CMakeLists.txt"
+      - "WavFile.hpp"
+      - "dtqw_render_wav.cpp"
+      - "DTQWWavHarnessTests.cpp"
       - "scripts/**"
       - ".github/workflows/allpass_crossfade_sanitizers_ci.yml"
   pull_request:
@@ -21,6 +24,9 @@ on:
       - "DTQWDispersionTests.cpp"
       - "NEON_2_SSE.h"
       - "CMakeLists.txt"
+      - "WavFile.hpp"
+      - "dtqw_render_wav.cpp"
+      - "DTQWWavHarnessTests.cpp"
       - "scripts/**"
       - ".github/workflows/allpass_crossfade_sanitizers_ci.yml"
   workflow_dispatch:
