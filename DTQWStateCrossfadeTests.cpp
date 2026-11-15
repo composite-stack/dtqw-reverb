@@ -12,6 +12,7 @@
 static std::atomic<size_t> g_audio_thread_allocations{0};
 static std::atomic<bool> g_track_allocations{false};
 
+#if !(defined(__APPLE__) && (defined(__SANITIZE_ADDRESS__) || (defined(__has_feature) && __has_feature(address_sanitizer))))
 void* operator new(std::size_t size) {
     if (g_track_allocations.load(std::memory_order_relaxed)) {
         g_audio_thread_allocations.fetch_add(1, std::memory_order_relaxed);
@@ -41,6 +42,7 @@ void operator delete(void* ptr, std::size_t) noexcept {
 void operator delete[](void* ptr, std::size_t) noexcept {
     std::free(ptr);
 }
+#endif
 
 #if (defined(__x86_64__) || defined(_M_X64)) && !defined(__aarch64__) && !defined(__ARM_NEON)
 #define DTQW_TEST_NEON_ON_X86 1
