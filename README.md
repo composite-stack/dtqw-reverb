@@ -1,52 +1,38 @@
-# DTQW Reverb Engine
+# DTQW Reverb - Discrete-Time Quantum Walk Audio Reverb Engine
 
-Ein modulares C++17 Digital Signal Processing (DSP) Reverb-System, basierend auf einem **Discrete-Time Quantum Walk (DTQW)** auf einem **4D-Hypercube-Graphen**. 
+Ein modularer, hocheffizienter C++17 Reverb-DSP-Kern basierend auf Discrete-Time Quantum Walks (DTQW) auf einem 4D-Hypercube-Graphen (16 Knoten, 64 gerichtete Verzögerungskanten) mit unitärem Grover-Coin, stufenloser Phasenrotation, Allpass-Dispersion, reziprokem Chorusing und dualem Allpass-Zustandscrossfading.
 
-Das Netzwerk interferiert Delays konstruktiv und destruktiv über orthogonale Kanten-Coins und erzeugt ballistische Ausbreitungsmuster sowie eine resonante Modendichte, die mit klassischen Markov-basierten Feedback Delay Networks (FDNs) oder Waveguide-Meshes nicht erreichbar ist.
+## Features
 
----
+- **4D-Hypercube-Topologie:** 16 Knoten, 64 gerichtete Delay-Linien mit SIMD-Transpositionsleser und Guard-Zone.
+- **Unitärer Grover-Streu-Coin mit Phasenrotation:** Stufenlose $C(\theta)$-Phasenrotation ohne $t=0$-Wet-Durchschlag.
+- **Hadamard-Matrixing:** Orthogonale 16-Knoten-Injektion und -Auskopplung zur Modenentkopplung und Raumabbildung.
+- **Frequenzabhängige Allpass-Dispersion:** Kaskadierte Allpass-Filterstufen in den Kanten mit kubischem Smoothstep-State-Crossfading.
+- **SIMD-Vektorisierung:** Paritätsgeprüfte Backends für SSE4.1 (x86_64), Apple Silicon ARM NEON und skalare Referenz.
+- **Allokationsfreier Audiopfad:** 0 Heap-Allokationen im Audio-Thread nach `prepare()`.
 
-## 🏛️ Mathematische Architektur
+## Build & Tests
 
-* **Topologie:** 4D-Hypercube mit $V = 16$ Knoten ($u \in \{0, \dots, 15\}$), regulärem Grad $d = 4$ und $E = 64$ gerichteten Kanten/Delay-Ports.
-* **Kanten-Permutation (Shift-Operator):**
-  $$S(u, k) = (u \oplus 2^k, k) \quad \text{mit } S^2 = I$$
-* **Knoten-Streuung (Unitärer Grover-Coin):**
-  $$C = \frac{1}{2} \mathbf{1}\mathbf{1}^T - I$$
-* **Stufenlose komplexe Coin-Phasendrehung:**
-  Erhält Injektions- ($e_0$) und Auslesemoden ($e_1$), während der orthogonale Transversalraum $(e_2, e_3)$ mit Rotationswinkel $\theta$ rotiert. Dies erlaubt eine kontinuierliche Klangfarben- und Diffusionssteuerung ohne Energieverlust.
-* **Frequenzabhängige Dispersion:**
-  SIMD-beschleunigte Allpass-Kaskaden in den Kantenleitungen zur Simulation von Phasendispersion (Chirped Wavepackets) mit stufenloser Gruppenlaufzeit-Einstellung.
-* **Duales Allpass-State-Crossfading:**
-  Klickfreie Host-Automation der Allpass-Koeffizienten über duale Zustandsbänke mit kubischem Smoothstep-Crossfade und robuster C1-Zustandsvererbung selbst bei überlappendem Hochfrequenz-Retriggering.
-* **Modulation:**
-  32 reziproke Kanten-LFOs mit Hermite-4-Punkt-Fractional-Delay-Interpolation für chorusartige Modenaufweitung ohne Tonhöhen-Drift.
-
----
-
-## ⚡ SIMD & Performance
-
-* **Header-Only Policy-Architektur:** Wählbares Backend über Template-Policies (`dtqw::simd::SSEBackend`, `dtqw::simd::NEONBackend`, `dtqw::simd::ScalarBackend`).
-* **Optimierte Ringpuffer-Guard-Zones:** Zusammenhängende 4-Sample-Loads mit $4 \times 4$-Transposition eliminieren unzusammenhängende Gather-Zugriffe.
-* **Echtzeit-Garantien:**
-  * **Null Heap-Allokationen** im Audiopfad (`noexcept`).
-  * Bitgenaue Pufferinvarianz über Blockgrößen von $1$ bis $2048$ Samples.
-  * Vollständig geschützt gegen Denormals und arithmetische Überläufe.
-
----
-
-## 🛡️ CI-Pipeline & Branch-Protection
-
-Änderungen an der Allpass- und Crossfade-Logik werden durch ein verpflichtendes GitHub-Actions-Gate (`allpass-crossfade-gate`) abgesichert:
-* Kompiliert auf **Linux (GCC & Clang, SSE4.1)** und **macOS (AppleClang ARM64 NEON)**.
-* Strikte Sanitizer-Prüfung via `-fsanitize=address,undefined` mit `detect_leaks=1`, `strict_init_order=1` und `halt_on_error=1`.
-* Automatische Blockierung von Pull Requests bei Memory Corruption, Buffer Overflows oder Undefined Behavior.
-
-### Lokale Verifikation
+### Lokale Verifikation (ASan & UBSan)
 ```bash
-./run_sanitizers.sh --force
-# oder über CMake:
-cmake -B build -DDTQW_ENABLE_SANITIZERS=ON
-cmake --build build
-ctest --test-dir build --output-on-failure
+./run_sanitizers.sh
 ```
+
+### Performance Benchmark & Regression Check
+```bash
+./scripts/run_performance_benchmark.sh --tolerance 25.0
+```
+
+### Manuelle Test-Kompilierung
+```bash
+g++ -std=c++17 -O3 -msse4.1 -I. DTQWPerformanceBenchmark.cpp -o dtqw_benchmark
+./dtqw_benchmark --runs 11 --warmup 3 --duration 1.5 --json benchmark_results.json
+```
+
+## CI / CD & Quality Gates
+
+1. **`allpass-crossfade-gate` (Pflicht-Check auf `main`):**
+   - Führt Worst-Case-Stresstests (Blockgrößen 1..64, Koeffizienten-Stress, überlappendes Retriggering) unter Clang/GCC AddressSanitizer und UndefinedBehaviorSanitizer auf Linux und macOS aus.
+2. **`performance-regression-gate`:**
+   - Misst die DSP-Verarbeitungsgeschwindigkeit über standardisierte Szenarien (48 kHz / 96 kHz, Block 64 / 128, Steady-State und dynamischer Crossfade-Stress).
+   - Vergleicht die Ergebnisse gegen `performance_baseline.json` und schlägt bei einer Überschreitung des Toleranzlimits (z. B. >25% Verlangsamung) fehl.
