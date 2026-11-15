@@ -8,7 +8,9 @@
 #include <new>
 
 // Enable testing of NEON on x86_64 host via NEON_2_SSE
+#if (defined(__x86_64__) || defined(_M_X64)) && !defined(__aarch64__) && !defined(__ARM_NEON)
 #define DTQW_TEST_NEON_ON_X86 1
+#endif
 #include "DTQWReverb.hpp"
 
 // Global allocation counter for real-time testing
