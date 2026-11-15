@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Pre-Push Hook: Verpflichtender Sanitizer-Lauf bei Allpass/Crossfade-Änderungen
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$HOOK_DIR/.." && pwd)"
+
+echo "==> [Pre-Push Hook] Führe Allpass & Crossfade Sanitizer Gate aus..."
+bash "$REPO_ROOT/scripts/ci_verify_allpass_crossfade.sh" --changed-only
