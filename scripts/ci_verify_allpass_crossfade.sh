@@ -106,7 +106,11 @@ COMMON_SAN_FLAGS=(
     -I"$BUILD_TMP"
 )
 
-export ASAN_OPTIONS="detect_leaks=1:check_initialization_order=1:strict_init_order=1:detect_stack_use_after_return=1"
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    export ASAN_OPTIONS="detect_leaks=0:check_initialization_order=1:strict_init_order=1:detect_stack_use_after_return=1"
+else
+    export ASAN_OPTIONS="detect_leaks=1:check_initialization_order=1:strict_init_order=1:detect_stack_use_after_return=1"
+fi
 export UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=1"
 
 # 1. Worst-Case-Stresstests (Blockgrößen 1..64, Jittering, dauerhafte Koeffizienten-Automation, schnelles Retriggering)
