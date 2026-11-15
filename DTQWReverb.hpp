@@ -17,12 +17,12 @@
 #endif
 
 #if defined(__ARM_NEON) || defined(__aarch64__)
-  #if defined(DTQW_TEST_NEON_ON_X86)
+  #if defined(DTQW_TEST_NEON_ON_X86) && (defined(__x86_64__) || defined(_M_X64) || defined(__i386__))
     #include "NEON_2_SSE.h"
   #else
     #include <arm_neon.h>
   #endif
-#elif defined(DTQW_TEST_NEON_ON_X86)
+#elif defined(DTQW_TEST_NEON_ON_X86) && (defined(__x86_64__) || defined(_M_X64) || defined(__i386__))
   #define __ARM_NEON 1
   #define __aarch64__ 1
   #include "NEON_2_SSE.h"
