@@ -84,3 +84,12 @@ if(Python3_FOUND)
         COMMENT "Running reproducible DSP performance benchmark and regression check..."
     )
 endif()
+
+# 6. JUCE plug-in standalone parity verification
+add_executable(dtqw_juce_parity juce/tests/parity_main.cpp)
+target_include_directories(dtqw_juce_parity PRIVATE /juce/Source/Dsp)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(dtqw_juce_parity PRIVATE -O2 -msse4.1)
+endif()
+add_test(NAME JuceParity COMMAND dtqw_juce_parity)
+set_tests_properties(JuceParity PROPERTIES LABELS "mandatory;ci;juce;parity")
